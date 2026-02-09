@@ -19,7 +19,7 @@ from typing import Optional, Tuple
 
 import torch
 import torch.nn.functional as F
-from megatron.energon import VQASample, InterleavedSample
+from megatron.energon import InterleavedSample, VQASample
 
 from nemo.collections.vlm.data.task_encoder import DataBatch, DataSample
 from nemo.collections.vlm.data.task_encoder import TaskEncoder as BaseTaskEncoder
@@ -40,7 +40,7 @@ class TaskEncoderConfig(BaseTaskEncoderConfig):
     stop_string: Optional[str] = ""
     system_prompt: Optional[str] = None
     image_token_str: str = "<start_of_image>"
-    image_token_id: int = 262144 # This is the token id for <image_soft_token>
+    image_token_id: int = 262144  # This is the token id for <image_soft_token>
 
 
 @dataclass
@@ -231,7 +231,9 @@ class TaskEncoder(BaseTaskEncoder):
 
         return sample
 
-    def tokenize_interleaved_sample(self, input_sample: InterleavedSample) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+    def tokenize_interleaved_sample(
+        self, input_sample: InterleavedSample
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
         Tokenize the input sequence and process images in an interleaved sample.
 
@@ -253,12 +255,14 @@ class TaskEncoder(BaseTaskEncoder):
                 texts.append(item)
             elif type(item) == torch.Tensor:
                 images.append(item)
-                texts.append(self.config.image_token_str)  # Append start token to the last text. HF Processor will replace this token with the actual image tokens during processing.
+                texts.append(
+                    self.config.image_token_str
+                )  # Append start token to the last text. HF Processor will replace this token with the actual image tokens during processing.
             else:
                 raise ValueError(f"Unsupported item type in interleaved sequence: {type(item)}")
-        
+
         outputs = self.hf_processor(
-            images=[images], # images is a batched to size of one.
+            images=[images],  # images is a batched to size of one.
             text=" ".join(texts),
             return_tensors="pt",
             images_kwargs={"do_rescale": False},
@@ -296,7 +300,9 @@ class TaskEncoder(BaseTaskEncoder):
         labels = labels[1:].contiguous()
         return labels
 
-    def pad_tokens_and_labels(self, tokens: torch.Tensor, labels: torch.Tensor, seqlen: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def pad_tokens_and_labels(
+        self, tokens: torch.Tensor, labels: torch.Tensor, seqlen: int
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Pad tokens and labels to a be a multiple of config.pad_to_multiple_of
 
@@ -309,10 +315,10 @@ class TaskEncoder(BaseTaskEncoder):
         Tuple[torch.Tensor, torch.Tensor]: Tokens and labels tensor padded to a multiple of config.pad_to_multiple_of
         """
         seqlen_padded = (
-                (seqlen + self.config.pad_to_multiple_of - 1)
-                // self.config.pad_to_multiple_of
-                * self.config.pad_to_multiple_of
-            )
+            (seqlen + self.config.pad_to_multiple_of - 1)
+            // self.config.pad_to_multiple_of
+            * self.config.pad_to_multiple_of
+        )
         pad_len = seqlen_padded - seqlen
 
         if pad_len > 0:
